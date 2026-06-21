@@ -14,10 +14,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # 직전 커밋과 비교해 변경 파일 추출
 
       - name: Deploy public/ to Cloudflare Pages
+        id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy public --project-name=easywebtools --branch=main
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.AUTHORIZED_CHAT_ID }}
+          JOB_STATUS: ${{ job.status }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then ICON="✅"; else ICON="❌"; fi
+          URL="${DEPLOY_URL:-https://easywebtools-1rk.pages.dev}"
+
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD | sed 's/^/• /')
+          [ -z "$CHANGED" ] && CHANGED="(변경 파일 정보 없음)"
+
+          TEXT="$ICON easy-web-tools 배포 ${JOB_STATUS}
+          🌐 ${URL}
+          🔖 ${COMMIT_SHA} · ${COMMIT_AUTHOR}
+          📝 ${COMMIT_MSG}
+
+          📂 변경 파일:
+          ${CHANGED}"
+
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "disable_web_page_preview=true" > /dev/null

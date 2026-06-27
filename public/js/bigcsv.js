@@ -157,8 +157,78 @@
   }
 
   const ROWNUM_W = 64; // 행 번호 거터 폭
+  const FILLER_W = 110; // 빈 격자 열 폭
+  let fillerColWTotal = 0;
   function syncTableWidth() {
-    if (tblEl) tblEl.style.width = ROWNUM_W + colWidths.reduce((s, w) => s + w, 0) + "px";
+    if (tblEl) tblEl.style.width = ROWNUM_W + colWidths.reduce((s, w) => s + w, 0) + fillerColWTotal + "px";
+  }
+
+  // 데이터 영역 오른쪽/아래 빈 공간을 빈 격자 셀로 채워 엑셀처럼 보이게
+  function fillGrid() {
+    if (!tblEl) return;
+    tblEl.querySelectorAll(".fillc").forEach((n) => n.remove());
+    tblEl.querySelectorAll("col.fillcol").forEach((n) => n.remove());
+    tblEl.querySelectorAll("tr.fillrow").forEach((n) => n.remove());
+    fillerColWTotal = 0;
+
+    const availW = tableBox.clientWidth;
+    const availH = tableBox.clientHeight;
+    if (!availW) { syncTableWidth(); return; }
+
+    const colgroup = tblEl.querySelector("colgroup");
+    const letterTr = tblEl.querySelector("tr.collet");
+    const nameTr = tblEl.querySelector("tr.colname");
+    const tbody = tblEl.querySelector("tbody");
+
+    // 가로: 남는 폭만큼 빈 열
+    const dataW = ROWNUM_W + colWidths.reduce((s, w) => s + w, 0);
+    const nCols = Math.max(0, Math.ceil((availW - dataW) / FILLER_W));
+    for (let k = 0; k < nCols; k++) {
+      const co = document.createElement("col");
+      co.className = "fillcol";
+      co.style.width = FILLER_W + "px";
+      colgroup.appendChild(co);
+      fillerColWTotal += FILLER_W;
+      const lth = document.createElement("th");
+      lth.className = "fillc";
+      lth.textContent = colLetter(cols.length + k);
+      letterTr.appendChild(lth);
+      const nth = document.createElement("th");
+      nth.className = "fillc";
+      nameTr.appendChild(nth);
+    }
+    if (nCols) {
+      tbody.querySelectorAll("tr").forEach((tr) => {
+        for (let k = 0; k < nCols; k++) {
+          const td = document.createElement("td");
+          td.className = "fillc";
+          tr.appendChild(td);
+        }
+      });
+    }
+
+    // 세로: 남는 높이만큼 빈 행
+    const firstRow = tbody.querySelector("tr");
+    const rowH = (firstRow && firstRow.offsetHeight) || 29;
+    const thead = tblEl.querySelector("thead");
+    const headH = (thead && thead.offsetHeight) || 44;
+    const usedH = headH + currentRows.length * rowH;
+    const nRows = Math.max(0, Math.ceil((availH - usedH) / rowH));
+    const totalCols = cols.length + nCols;
+    for (let r = 0; r < nRows; r++) {
+      const tr = document.createElement("tr");
+      tr.className = "fillrow";
+      const num = document.createElement("td");
+      num.className = "rownum fillc";
+      tr.appendChild(num);
+      for (let c = 0; c < totalCols; c++) {
+        const td = document.createElement("td");
+        td.className = "fillc";
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    syncTableWidth();
   }
 
   function renderTable(rows) {
@@ -187,9 +257,17 @@
     const corner = document.createElement("th");
     corner.className = "corner";
     letterTr.appendChild(corner);
+    const makeResizer = (ci) => {
+      const res = document.createElement("div");
+      res.className = "xres";
+      res.addEventListener("mousedown", (e) => startResize(e, ci));
+      res.addEventListener("dblclick", (e) => { e.stopPropagation(); autoFit(ci); });
+      return res;
+    };
     cols.forEach((_, i) => {
       const th = document.createElement("th");
       th.textContent = colLetter(i);
+      th.appendChild(makeResizer(i)); // 열 문자(A·B·C) 헤더 경계도 드래그 가능
       letterTr.appendChild(th);
     });
     thead.appendChild(letterTr);
@@ -202,11 +280,7 @@
     cols.forEach((c, ci) => {
       const th = document.createElement("th");
       th.textContent = c;
-      const res = document.createElement("div");
-      res.className = "xres";
-      res.addEventListener("mousedown", (e) => startResize(e, ci));
-      res.addEventListener("dblclick", (e) => { e.stopPropagation(); autoFit(ci); });
-      th.appendChild(res);
+      th.appendChild(makeResizer(ci));
       nameTr.appendChild(th);
     });
     thead.appendChild(nameTr);
@@ -234,6 +308,7 @@
     tableBox.innerHTML = "";
     tableBox.appendChild(tbl);
     syncTableWidth();
+    requestAnimationFrame(fillGrid); // 빈 공간 격자 채우기
   }
 
   // 열 너비 드래그 조정
@@ -252,6 +327,7 @@
       document.removeEventListener("mousemove", move);
       document.removeEventListener("mouseup", up);
       document.body.style.cursor = "";
+      fillGrid(); // 폭 바뀌었으니 빈 격자 다시 채움
     }
     document.addEventListener("mousemove", move);
     document.addEventListener("mouseup", up);
@@ -266,7 +342,7 @@
     }
     colWidths[ci] = Math.min(360, Math.max(56, max * 8 + 22));
     if (colEls[ci + 1]) colEls[ci + 1].style.width = colWidths[ci] + "px";
-    syncTableWidth();
+    fillGrid();
   }
 
   // ── 엑셀식 셀 선택/편집 ─────────────────────────────────────────
@@ -325,6 +401,7 @@
     else inp.setSelectionRange(inp.value.length, inp.value.length);
 
     inp.addEventListener("keydown", (e) => {
+      e.stopPropagation(); // 편집 중 키는 그리드 핸들러로 버블링 금지(커밋 후 재편집 방지)
       if (e.key === "Enter") {
         e.preventDefault();
         commitEdit(e.shiftKey ? "up" : "down");
@@ -333,10 +410,7 @@
         commitEdit(e.shiftKey ? "left" : "right");
       } else if (e.key === "Escape") {
         e.preventDefault();
-        e.stopPropagation(); // 전체화면 닫힘 방지
         cancelEdit();
-      } else {
-        e.stopPropagation(); // 입력 중에는 그리드 네비게이션 차단
       }
     });
     inp.addEventListener("blur", () => {
@@ -353,30 +427,31 @@
     editing = false;
   }
 
-  async function commitEdit(move) {
+  function commitEdit(move) {
     const td = cellEl(active.r, active.c);
     const inp = td && td.querySelector("input");
     const col = cols[active.c];
     const old = currentRows[active.r][col];
     const val = inp ? inp.value : old == null ? "" : String(old);
     const id = currentRows[active.r].__id;
+    const changed = val !== (old == null ? "" : String(old));
     endEditDom(val);
-    applySelection();
-    if (val !== (old == null ? "" : String(old))) {
+    if (changed) {
       currentRows[active.r][col] = val;
       if (td) td.classList.add("edited");
-      try {
-        await updateCell(id, col, val);
-      } catch (err) {
-        console.error(err);
-        setStatus(status, "셀 수정 실패: " + (err.message || err), "err");
-      }
     }
+    // 선택 이동은 즉시(반응성), DB 반영은 백그라운드로
     if (move === "down") selectCell(active.r + 1, active.c);
     else if (move === "up") selectCell(active.r - 1, active.c);
     else if (move === "right") selectCell(active.r, active.c + 1);
     else if (move === "left") selectCell(active.r, active.c - 1);
-    else tableBox.focus();
+    else { applySelection(); tableBox.focus(); }
+    if (changed) {
+      updateCell(id, col, val).catch((err) => {
+        console.error(err);
+        setStatus(status, "셀 수정 실패: " + (err.message || err), "err");
+      });
+    }
   }
 
   function cancelEdit() {
@@ -522,6 +597,7 @@
   function setFullscreen(on) {
     panelBody.classList.toggle("fs", on);
     document.body.style.overflow = on ? "hidden" : "";
+    if (on) requestAnimationFrame(fillGrid); // 전체화면 크기에 맞춰 격자 채움
     if (fsToggle) {
       fsToggle.innerHTML = on
         ? '<i data-lucide="minimize-2" class="h-4 w-4"></i> 닫기 (Esc)'
@@ -534,6 +610,9 @@
   }
   const exitBtn = document.getElementById("bigExit");
   if (exitBtn) exitBtn.addEventListener("click", () => setFullscreen(false));
+  window.addEventListener("resize", () => {
+    if (panelBody.classList.contains("fs") && tblEl) fillGrid();
+  });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !editing && panelBody.classList.contains("fs")) setFullscreen(false);
   });

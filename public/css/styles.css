@@ -343,13 +343,18 @@
   width: 100%; min-width: 8ch; border: none; outline: none; background: #fff; color: #1a1a1a;
   padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: inherit;
 }
-/* 열 너비 리사이즈 핸들 (헤더 우측 경계) */
-.xlgrid tr.colname th { position: sticky; } /* 핸들 기준 컨테이너 */
+/* 열 너비 리사이즈 핸들 (헤더 우측 경계 — 문자행·이름행 둘 다) */
+.xlgrid thead th { position: sticky; } /* 핸들 기준 컨테이너 */
 .xlgrid .xres {
   position: absolute; top: 0; right: -4px; width: 8px; height: 100%;
   cursor: col-resize; z-index: 5; user-select: none;
 }
 .xlgrid .xres:hover { background: #107c41; opacity: 0.5; }
+
+/* 빈 격자 채움 셀 */
+.xlgrid td.fillc { cursor: default; background: #fff; }
+.xlgrid tr.fillrow td { height: 28px; padding: 0; }
+.xlgrid tr.fillrow td.rownum { background: #f3f3f3; }
 
 /* 도움말 한 줄 */
 .xhelp { font-size: 0.76rem; color: #6b7280; padding: 2px 2px 0; }

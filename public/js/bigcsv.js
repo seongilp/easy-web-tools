@@ -159,6 +159,7 @@
   const ROWNUM_W = 64; // 행 번호 거터 폭
   const FILLER_W = 110; // 빈 격자 열 폭
   let fillerColWTotal = 0;
+  let nFillCols = 0; // 이동 가능한 빈 열 개수
   function syncTableWidth() {
     if (tblEl) tblEl.style.width = ROWNUM_W + colWidths.reduce((s, w) => s + w, 0) + fillerColWTotal + "px";
   }
@@ -183,6 +184,7 @@
     // 가로: 남는 폭만큼 빈 열
     const dataW = ROWNUM_W + colWidths.reduce((s, w) => s + w, 0);
     const nCols = Math.max(0, Math.ceil((availW - dataW) / FILLER_W));
+    nFillCols = nCols;
     for (let k = 0; k < nCols; k++) {
       const co = document.createElement("col");
       co.className = "fillcol";
@@ -197,11 +199,15 @@
       nth.className = "fillc";
       nameTr.appendChild(nth);
     }
+    // 데이터 행의 빈 칸도 이동/편집 가능하도록 좌표 부여(가상 열)
     if (nCols) {
-      tbody.querySelectorAll("tr").forEach((tr) => {
+      const dataTrs = [...tbody.querySelectorAll("tr")];
+      dataTrs.forEach((tr, ri) => {
         for (let k = 0; k < nCols; k++) {
           const td = document.createElement("td");
           td.className = "fillc";
+          td.dataset.r = ri;
+          td.dataset.c = cols.length + k;
           tr.appendChild(td);
         }
       });
@@ -374,9 +380,10 @@
     if (a) a.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
   // extend=true면 anchor 고정(범위 확장), 아니면 anchor=active(단일 선택)
+  // 데이터 열 + 빈 격자 열(nFillCols)까지 이동 가능
   function selectCell(r, c, extend = false, focus = true) {
     if (!currentRows.length) return;
-    active = { r: clamp(r, currentRows.length - 1), c: clamp(c, cols.length - 1) };
+    active = { r: clamp(r, currentRows.length - 1), c: clamp(c, cols.length + nFillCols - 1) };
     if (!extend) anchor = { r: active.r, c: active.c };
     applySelection();
     if (focus) tableBox.focus();
@@ -419,38 +426,82 @@
   }
 
   function endEditDom(text) {
+    editing = false; // 먼저 내려야 input 제거 시 발생하는 blur 재진입을 막음
     const td = cellEl(active.r, active.c);
     if (td) {
       td.classList.remove("editing");
       td.textContent = text;
     }
-    editing = false;
   }
 
-  function commitEdit(move) {
-    const td = cellEl(active.r, active.c);
-    const inp = td && td.querySelector("input");
-    const col = cols[active.c];
-    const old = currentRows[active.r][col];
-    const val = inp ? inp.value : old == null ? "" : String(old);
-    const id = currentRows[active.r].__id;
-    const changed = val !== (old == null ? "" : String(old));
-    endEditDom(val);
-    if (changed) {
-      currentRows[active.r][col] = val;
-      if (td) td.classList.add("edited");
-    }
-    // 선택 이동은 즉시(반응성), DB 반영은 백그라운드로
+  function moveSelection(move) {
     if (move === "down") selectCell(active.r + 1, active.c);
     else if (move === "up") selectCell(active.r - 1, active.c);
     else if (move === "right") selectCell(active.r, active.c + 1);
     else if (move === "left") selectCell(active.r, active.c - 1);
     else { applySelection(); tableBox.focus(); }
+  }
+
+  function commitEdit(move) {
+    const td = cellEl(active.r, active.c);
+    const inp = td && td.querySelector("input");
+    const virtual = active.c >= cols.length; // 빈(가상) 열
+    const col = virtual ? null : cols[active.c];
+    const old = virtual ? "" : currentRows[active.r][col];
+    const val = inp ? inp.value : old == null ? "" : String(old);
+    const id = currentRows[active.r].__id;
+    const changed = val !== (old == null ? "" : String(old));
+    endEditDom(val);
+    if (virtual) {
+      // 빈 열에 입력하면 새 열을 추가하고 반영(엑셀처럼)
+      if (changed) { materializeAndSet(active.r, active.c, val, move); return; }
+      moveSelection(move);
+      return;
+    }
+    if (changed) {
+      currentRows[active.r][col] = val;
+      if (td) td.classList.add("edited");
+    }
+    moveSelection(move); // 선택 이동은 즉시(반응성)
     if (changed) {
       updateCell(id, col, val).catch((err) => {
         console.error(err);
         setStatus(status, "셀 수정 실패: " + (err.message || err), "err");
       });
+    }
+  }
+
+  // 가상 열 인덱스까지 실제 열을 추가(ALTER) — 열 이름은 엑셀식 문자
+  async function addColumnsUpTo(targetC) {
+    while (cols.length <= targetC) {
+      let name = colLetter(cols.length);
+      const base = name;
+      let n = 1;
+      while (cols.includes(name)) name = base + "_" + ++n;
+      await conn.query(`ALTER TABLE t ADD COLUMN ${q(name)} VARCHAR DEFAULT ''`);
+      cols.push(name);
+      colWidths.push(120);
+    }
+  }
+  async function materializeAndSet(r, c, val, move) {
+    setStatus(status, "열 추가 중…", "work");
+    try {
+      await addColumnsUpTo(c);
+      await updateCell(currentRows[r].__id, cols[c], val);
+      await refresh(); // 새 열 반영(선택은 0,0으로 초기화됨)
+      if (titleEl) titleEl.textContent = titleEl.textContent.replace(/\d+열/, cols.length + "열");
+      let nr = r, nc = c;
+      if (move === "down") nr = r + 1;
+      else if (move === "up") nr = r - 1;
+      else if (move === "right") nc = c + 1;
+      else if (move === "left") nc = c - 1;
+      selectCell(nr, nc);
+      const cell = cellEl(r, c);
+      if (cell) cell.classList.add("edited");
+      setStatus(status, `열 추가됨 — 현재 ${cols.length}열`, "ok");
+    } catch (err) {
+      console.error(err);
+      setStatus(status, "열 추가 실패: " + (err.message || err), "err");
     }
   }
 
@@ -532,6 +583,7 @@
     const updates = [];
     for (let r = r1; r <= r2; r++) {
       for (let c = c1; c <= c2; c++) {
+        if (c >= cols.length) continue; // 빈(가상) 열은 건너뜀
         const col = cols[c];
         if (String(currentRows[r][col] == null ? "" : currentRows[r][col]) === "") continue;
         currentRows[r][col] = "";

@@ -32,7 +32,11 @@
   let baseName = "data";
   let currentRows = []; // 현재 페이지 데이터
   let active = { r: 0, c: 0 }; // 선택된 셀(엑셀식)
+  let anchor = { r: 0, c: 0 }; // 범위 선택 고정점
   let editing = false;
+  let colWidths = []; // 각 데이터 열 너비(px)
+  let colEls = []; // colgroup의 <col> 요소들 (0=행번호)
+  let tblEl = null;
 
   function pageSize() {
     return parseInt(sizeEl.value, 10) || 100;
@@ -96,6 +100,7 @@
         .toArray()
         .map((r) => r.toJSON().name)
         .filter((n) => n !== "__id");
+      colWidths = cols.map((c) => Math.min(260, Math.max(90, String(c).length * 9 + 80))); // 기본 너비
 
       where = "";
       filterEl.value = "";
@@ -151,11 +156,31 @@
     return s;
   }
 
+  const ROWNUM_W = 64; // 행 번호 거터 폭
+  function syncTableWidth() {
+    if (tblEl) tblEl.style.width = ROWNUM_W + colWidths.reduce((s, w) => s + w, 0) + "px";
+  }
+
   function renderTable(rows) {
     const tbl = document.createElement("table");
     tbl.className = "xlgrid";
+    tblEl = tbl;
 
-    // 헤더 2줄: (1) 엑셀식 열 문자  (2) 실제 컬럼명
+    // 열 너비 고정용 colgroup (table-layout: fixed) — 드래그로 조정 가능
+    const cg = document.createElement("colgroup");
+    const c0 = document.createElement("col");
+    c0.style.width = ROWNUM_W + "px";
+    cg.appendChild(c0);
+    colEls = [c0];
+    cols.forEach((_, i) => {
+      const co = document.createElement("col");
+      co.style.width = colWidths[i] + "px";
+      cg.appendChild(co);
+      colEls.push(co);
+    });
+    tbl.appendChild(cg);
+
+    // 헤더 2줄: (1) 엑셀식 열 문자  (2) 실제 컬럼명 + 리사이즈 핸들
     const thead = document.createElement("thead");
     const letterTr = document.createElement("tr");
     letterTr.className = "collet";
@@ -174,9 +199,14 @@
     const cornerHash = document.createElement("th");
     cornerHash.className = "corner";
     nameTr.appendChild(cornerHash);
-    cols.forEach((c) => {
+    cols.forEach((c, ci) => {
       const th = document.createElement("th");
       th.textContent = c;
+      const res = document.createElement("div");
+      res.className = "xres";
+      res.addEventListener("mousedown", (e) => startResize(e, ci));
+      res.addEventListener("dblclick", (e) => { e.stopPropagation(); autoFit(ci); });
+      th.appendChild(res);
       nameTr.appendChild(th);
     });
     thead.appendChild(nameTr);
@@ -203,6 +233,40 @@
 
     tableBox.innerHTML = "";
     tableBox.appendChild(tbl);
+    syncTableWidth();
+  }
+
+  // 열 너비 드래그 조정
+  function startResize(e, ci) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startW = colWidths[ci];
+    document.body.style.cursor = "col-resize";
+    function move(ev) {
+      colWidths[ci] = Math.max(40, Math.round(startW + (ev.clientX - startX)));
+      if (colEls[ci + 1]) colEls[ci + 1].style.width = colWidths[ci] + "px";
+      syncTableWidth();
+    }
+    function up() {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+      document.body.style.cursor = "";
+    }
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  }
+  // 더블클릭: 현재 페이지 내용에 맞춰 너비 자동 조정
+  function autoFit(ci) {
+    const col = cols[ci];
+    let max = String(col).length;
+    for (const row of currentRows) {
+      const v = row[col];
+      if (v != null) max = Math.max(max, String(v).length);
+    }
+    colWidths[ci] = Math.min(360, Math.max(56, max * 8 + 22));
+    if (colEls[ci + 1]) colEls[ci + 1].style.width = colWidths[ci] + "px";
+    syncTableWidth();
   }
 
   // ── 엑셀식 셀 선택/편집 ─────────────────────────────────────────
@@ -212,25 +276,41 @@
   function clamp(v, max) {
     return Math.max(0, Math.min(v, max));
   }
-  function applyActive() {
-    const prev = tableBox.querySelector("td.cellsel");
-    if (prev) prev.classList.remove("cellsel");
-    const td = cellEl(active.r, active.c);
-    if (td) {
-      td.classList.add("cellsel");
-      td.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
+  function rect() {
+    return {
+      r1: Math.min(anchor.r, active.r),
+      r2: Math.max(anchor.r, active.r),
+      c1: Math.min(anchor.c, active.c),
+      c2: Math.max(anchor.c, active.c),
+    };
   }
-  function selectCell(r, c, focus = true) {
+  function applySelection() {
+    tableBox.querySelectorAll("td.cellsel, td.inrange").forEach((td) => td.classList.remove("cellsel", "inrange"));
+    const { r1, r2, c1, c2 } = rect();
+    for (let r = r1; r <= r2; r++) {
+      for (let c = c1; c <= c2; c++) {
+        const td = cellEl(r, c);
+        if (!td) continue;
+        td.classList.add(r === active.r && c === active.c ? "cellsel" : "inrange");
+      }
+    }
+    const a = cellEl(active.r, active.c);
+    if (a) a.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+  // extend=true면 anchor 고정(범위 확장), 아니면 anchor=active(단일 선택)
+  function selectCell(r, c, extend = false, focus = true) {
     if (!currentRows.length) return;
     active = { r: clamp(r, currentRows.length - 1), c: clamp(c, cols.length - 1) };
-    applyActive();
+    if (!extend) anchor = { r: active.r, c: active.c };
+    applySelection();
     if (focus) tableBox.focus();
   }
 
   function beginEdit(initial) {
     const td = cellEl(active.r, active.c);
     if (!td) return;
+    anchor = { r: active.r, c: active.c }; // 편집 시작 시 단일 셀로 축소
+    tableBox.querySelectorAll("td.inrange").forEach((x) => x.classList.remove("inrange"));
     editing = true;
     td.classList.add("editing");
     const cur = currentRows[active.r][cols[active.c]];
@@ -281,7 +361,7 @@
     const val = inp ? inp.value : old == null ? "" : String(old);
     const id = currentRows[active.r].__id;
     endEditDom(val);
-    applyActive();
+    applySelection();
     if (val !== (old == null ? "" : String(old))) {
       currentRows[active.r][col] = val;
       if (td) td.classList.add("edited");
@@ -302,7 +382,7 @@
   function cancelEdit() {
     const old = currentRows[active.r][cols[active.c]];
     endEditDom(old == null ? "" : String(old));
-    applyActive();
+    applySelection();
     tableBox.focus();
   }
 
@@ -314,27 +394,122 @@
     await stmt.close();
   }
 
-  // 그리드 키보드 네비게이션 (편집 중이 아닐 때)
+  // 선택 범위를 TSV로 (엑셀 호환)
+  function buildTSV() {
+    const { r1, r2, c1, c2 } = rect();
+    const lines = [];
+    for (let r = r1; r <= r2; r++) {
+      const cells = [];
+      for (let c = c1; c <= c2; c++) {
+        const v = currentRows[r][cols[c]];
+        cells.push(v == null ? "" : String(v));
+      }
+      lines.push(cells.join("\t"));
+    }
+    return lines.join("\n");
+  }
+
+  // DB 일괄 반영 + 상태 표시
+  async function applyUpdates(updates, doneMsg) {
+    if (!updates.length) return;
+    setStatus(status, "반영 중…", "work");
+    try {
+      for (const u of updates) await updateCell(u.id, u.col, u.val);
+      setStatus(status, doneMsg(updates.length), "ok");
+    } catch (err) {
+      console.error(err);
+      setStatus(status, "처리 실패: " + (err.message || err), "err");
+    }
+  }
+
+  // 붙여넣기: 활성 셀 좌상단부터 TSV를 채운다
+  function pasteText(text) {
+    const startR = Math.min(anchor.r, active.r);
+    const startC = Math.min(anchor.c, active.c);
+    const g = text.replace(/\r\n?/g, "\n").split("\n");
+    if (g.length > 1 && g[g.length - 1] === "") g.pop();
+    const updates = [];
+    let maxR = startR, maxC = startC;
+    g.forEach((line, i) => {
+      line.split("\t").forEach((val, j) => {
+        const r = startR + i, c = startC + j;
+        if (r >= currentRows.length || c >= cols.length) return;
+        maxR = Math.max(maxR, r);
+        maxC = Math.max(maxC, c);
+        const col = cols[c];
+        const old = currentRows[r][col];
+        if (String(old == null ? "" : old) === val) return;
+        currentRows[r][col] = val;
+        const td = cellEl(r, c);
+        if (td) { td.textContent = val; td.classList.add("edited"); }
+        updates.push({ id: currentRows[r].__id, col, val });
+      });
+    });
+    anchor = { r: startR, c: startC };
+    active = { r: Math.min(maxR, currentRows.length - 1), c: Math.min(maxC, cols.length - 1) };
+    applySelection();
+    applyUpdates(updates, (n) => `붙여넣음 — ${n}칸`);
+  }
+
+  // 선택 범위 비우기
+  function clearRange() {
+    const { r1, r2, c1, c2 } = rect();
+    const updates = [];
+    for (let r = r1; r <= r2; r++) {
+      for (let c = c1; c <= c2; c++) {
+        const col = cols[c];
+        if (String(currentRows[r][col] == null ? "" : currentRows[r][col]) === "") continue;
+        currentRows[r][col] = "";
+        const td = cellEl(r, c);
+        if (td) { td.textContent = ""; td.classList.add("edited"); }
+        updates.push({ id: currentRows[r].__id, col, val: "" });
+      }
+    }
+    applyUpdates(updates, (n) => `${n}칸 지움`);
+  }
+
+  // 그리드 키보드 (편집 중이 아닐 때)
   tableBox.addEventListener("keydown", (e) => {
     if (editing) return;
     const k = e.key;
-    if (k === "ArrowUp") { e.preventDefault(); selectCell(active.r - 1, active.c); }
-    else if (k === "ArrowDown") { e.preventDefault(); selectCell(active.r + 1, active.c); }
-    else if (k === "ArrowLeft") { e.preventDefault(); selectCell(active.r, active.c - 1); }
-    else if (k === "ArrowRight" || k === "Tab") { e.preventDefault(); selectCell(active.r, active.c + (e.shiftKey ? -1 : 1)); }
+    const ext = e.shiftKey;
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod) {
+      if (k === "a" || k === "A") { e.preventDefault(); anchor = { r: 0, c: 0 }; selectCell(currentRows.length - 1, cols.length - 1, true); }
+      return; // 복사/붙여넣기(C/V)는 copy/paste 이벤트가 처리
+    }
+    if (k === "ArrowUp") { e.preventDefault(); selectCell(active.r - 1, active.c, ext); }
+    else if (k === "ArrowDown") { e.preventDefault(); selectCell(active.r + 1, active.c, ext); }
+    else if (k === "ArrowLeft") { e.preventDefault(); selectCell(active.r, active.c - 1, ext); }
+    else if (k === "ArrowRight") { e.preventDefault(); selectCell(active.r, active.c + 1, ext); }
+    else if (k === "Tab") { e.preventDefault(); selectCell(active.r, active.c + (ext ? -1 : 1)); }
     else if (k === "Enter" || k === "F2") { e.preventDefault(); beginEdit(); }
     else if (k === "PageDown") { e.preventDefault(); if (!nextBtn.disabled) nextBtn.click(); }
     else if (k === "PageUp") { e.preventDefault(); if (!prevBtn.disabled) prevBtn.click(); }
-    else if (k === "Delete" || k === "Backspace") { e.preventDefault(); beginEdit(""); commitEdit(null); }
-    else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); beginEdit(k); }
+    else if (k === "Delete" || k === "Backspace") { e.preventDefault(); clearRange(); }
+    else if (k.length === 1 && !e.altKey) { e.preventDefault(); beginEdit(k); }
   });
-  // 클릭=선택, 더블클릭=편집
+  // 복사/붙여넣기 (엑셀 호환 TSV)
+  tableBox.addEventListener("copy", (e) => {
+    if (editing) return;
+    e.preventDefault();
+    if (e.clipboardData) e.clipboardData.setData("text/plain", buildTSV());
+    const { r1, r2, c1, c2 } = rect();
+    setStatus(status, `복사됨 — ${r2 - r1 + 1}×${c2 - c1 + 1}`, "ok");
+  });
+  tableBox.addEventListener("paste", (e) => {
+    if (editing) return;
+    e.preventDefault();
+    const txt = e.clipboardData ? e.clipboardData.getData("text/plain") : "";
+    if (txt) pasteText(txt);
+  });
+  // 클릭=선택(Shift=범위 확장), 더블클릭=편집
   tableBox.addEventListener("mousedown", (e) => {
-    if (e.target.tagName === "INPUT") return;
+    if (e.target.tagName === "INPUT" || e.target.classList.contains("xres")) return;
     const td = e.target.closest("td[data-c]");
     if (!td) return;
     if (editing) commitEdit(null);
-    selectCell(+td.dataset.r, +td.dataset.c);
+    selectCell(+td.dataset.r, +td.dataset.c, e.shiftKey);
   });
   tableBox.addEventListener("dblclick", (e) => {
     const td = e.target.closest("td[data-c]");

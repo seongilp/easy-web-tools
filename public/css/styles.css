@@ -266,3 +266,49 @@
 }
 .namelist .row input:focus { border-color: rgb(99 102 241); }
 .namelist .row .btn-ghost { flex: none; padding: 0.5rem 0.8rem; }
+
+/* 엑셀 편집 (x-spreadsheet 마운트) */
+#sheetGrid { margin-top: 0.9rem; }
+#sheetGrid:empty { margin-top: 0; }
+#sheetGrid .x-spreadsheet { border: 1px solid rgb(39 39 42); border-radius: 0.6rem; overflow: hidden; }
+
+/* 대용량 CSV 테이블 */
+#bigTable {
+  overflow: auto;
+  max-height: 460px;
+  margin-top: 0.9rem;
+  border: 1px solid rgb(39 39 42);
+  border-radius: 0.6rem;
+}
+#bigTable:empty { display: none; }
+.bigtable { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 0.82rem; }
+.bigtable th, .bigtable td { border: 1px solid rgb(39 39 42); padding: 0; }
+.bigtable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgb(24 24 27);
+  color: rgb(212 212 216);
+  padding: 0.4rem 0.6rem;
+  white-space: nowrap;
+  font-weight: 500;
+  text-align: left;
+}
+.bigtable th.idcol, .bigtable td.idcol {
+  background: rgb(17 17 19);
+  color: rgb(113 113 122);
+  text-align: right;
+  white-space: nowrap;
+  padding: 0.4rem 0.6rem;
+}
+.bigtable td input {
+  width: 16ch;
+  border: none;
+  background: transparent;
+  color: rgb(228 228 231);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.82rem;
+  outline: none;
+}
+.bigtable td input:focus { background: rgb(30 30 46); box-shadow: inset 0 0 0 1px rgb(99 102 241); }
+.bigtable td input.edited { color: rgb(52 211 153); }

@@ -15,7 +15,7 @@
       },
     };
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=16" />
+  <link rel="stylesheet" href="css/styles.css?v=17" />
 </head>
 <body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
   <div class="mx-auto max-w-3xl px-4 pb-24">
@@ -53,6 +53,12 @@
       </button>
       <button class="tab" data-tab="rename" role="tab">
         <i data-lucide="file-pen" class="h-4 w-4"></i> 파일명 수정
+      </button>
+      <button class="tab" data-tab="sheet" role="tab">
+        <i data-lucide="table-2" class="h-4 w-4"></i> 엑셀 편집
+      </button>
+      <button class="tab" data-tab="big" role="tab">
+        <i data-lucide="database" class="h-4 w-4"></i> 대용량 CSV
       </button>
     </nav>
 
@@ -427,6 +433,92 @@
       <div class="status" id="renameStatus"></div>
     </section>
 
+    <!-- ===== 엑셀 편집 ===== -->
+    <section id="sheet" class="panel card">
+      <div class="mb-4 flex items-center gap-2">
+        <i data-lucide="table-2" class="h-5 w-5 text-brand"></i>
+        <h2 class="text-lg font-semibold">엑셀 편집</h2>
+      </div>
+      <p class="hint">xlsx·csv를 표에서 바로 편집하고 다시 저장합니다. 값은 텍스트로 유지돼요(0으로 시작하는 숫자·날짜 보존). 소~중간 규모에 적합합니다.</p>
+
+      <div class="mb-4 grid gap-4 sm:grid-cols-2">
+        <div class="field">
+          <label for="sheetEnc">CSV 인코딩</label>
+          <select id="sheetEnc">
+            <option value="utf-8" selected>UTF-8</option>
+            <option value="euc-kr">EUC-KR (한글 깨질 때)</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="filedrop" id="sheetDrop">
+        <input type="file" id="sheetInput" accept=".xlsx,.xls,.csv" hidden />
+        <i data-lucide="file-spreadsheet" class="h-7 w-7"></i>
+        <span>xlsx 또는 csv 선택·드래그</span>
+      </label>
+
+      <div id="sheetToolbar" class="mt-3 hidden flex-wrap gap-2">
+        <button id="sheetSaveXlsx" class="btn-primary"><i data-lucide="download" class="h-4 w-4"></i> xlsx로 저장</button>
+        <button id="sheetSaveCsv" class="btn-ghost"><i data-lucide="download" class="h-4 w-4"></i> csv로 저장</button>
+      </div>
+      <div id="sheetGrid"></div>
+      <div class="status" id="sheetStatus"></div>
+    </section>
+
+    <!-- ===== 대용량 CSV 편집 (WASM / DuckDB) ===== -->
+    <section id="big" class="panel card">
+      <div class="mb-4 flex items-center gap-2">
+        <i data-lucide="database" class="h-5 w-5 text-brand"></i>
+        <h2 class="text-lg font-semibold">대용량 CSV 편집 <span class="ml-1 align-middle text-xs font-normal text-zinc-500">WASM · DuckDB</span></h2>
+      </div>
+      <p class="hint">수십만~수백만 행 CSV도 브라우저에서. 페이지 단위로 편집하고 WHERE 조건으로 필터한 뒤 다시 CSV로 저장합니다. 최초 1회 DuckDB(WASM) 로딩에 수 초 걸려요.</p>
+
+      <div class="mb-4 grid gap-4 sm:grid-cols-2">
+        <div class="field">
+          <label for="bigEnc">CSV 인코딩</label>
+          <select id="bigEnc">
+            <option value="utf-8" selected>UTF-8</option>
+            <option value="euc-kr">EUC-KR (한글 깨질 때)</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="filedrop" id="bigDrop">
+        <input type="file" id="bigInput" accept=".csv" hidden />
+        <i data-lucide="database" class="h-7 w-7"></i>
+        <span>CSV 선택·드래그</span>
+      </label>
+
+      <div id="bigPanelBody" class="hidden">
+        <div class="mt-4 flex flex-wrap items-end gap-2">
+          <div class="field" style="flex:1; min-width:220px">
+            <label for="bigFilter">필터 (SQL WHERE 조건, 선택)</label>
+            <input type="text" id="bigFilter" placeholder="예: amount > 1000 AND city = '서울'" />
+          </div>
+          <button id="bigApply" class="btn-ghost"><i data-lucide="filter" class="h-4 w-4"></i> 적용</button>
+          <div class="field" style="max-width:130px">
+            <label for="bigPageSize">페이지당</label>
+            <select id="bigPageSize">
+              <option>100</option>
+              <option>500</option>
+              <option>1000</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="bigTable"></div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <button id="bigPrev" class="btn-ghost"><i data-lucide="chevron-left" class="h-4 w-4"></i> 이전</button>
+          <button id="bigNext" class="btn-ghost">다음 <i data-lucide="chevron-right" class="h-4 w-4"></i></button>
+          <span id="bigInfo" class="text-sm text-zinc-400"></span>
+          <span class="flex-1"></span>
+          <button id="bigExport" class="btn-primary"><i data-lucide="download" class="h-4 w-4"></i> CSV로 저장</button>
+        </div>
+      </div>
+      <div class="status" id="bigStatus"></div>
+    </section>
+
     <footer class="mt-10 text-center text-xs text-zinc-500">
       100% 클라이언트 사이드 · 데이터는 어디로도 전송되지 않습니다.
     </footer>
@@ -441,18 +533,20 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
   <!-- 앱 스크립트 -->
-  <script src="js/utils.js?v=14"></script>
-  <script src="js/heic.js?v=14"></script>
-  <script src="js/waveform.js?v=14"></script>
-  <script src="js/audio.js?v=14"></script>
-  <script src="js/image.js?v=14"></script>
-  <script src="js/pdf-tools.js?v=14"></script>
-  <script src="js/app.js?v=14"></script>
-  <script type="module" src="js/editor.js?v=14"></script>
-  <script src="js/stamp.js?v=14"></script>
-  <script src="js/csv.js?v=15"></script>
-  <script src="js/rename.js?v=16"></script>
-  <script src="js/select.js?v=14"></script>
+  <script src="js/utils.js?v=17"></script>
+  <script src="js/heic.js?v=17"></script>
+  <script src="js/waveform.js?v=17"></script>
+  <script src="js/audio.js?v=17"></script>
+  <script src="js/image.js?v=17"></script>
+  <script src="js/pdf-tools.js?v=17"></script>
+  <script src="js/app.js?v=17"></script>
+  <script type="module" src="js/editor.js?v=17"></script>
+  <script src="js/stamp.js?v=17"></script>
+  <script src="js/csv.js?v=17"></script>
+  <script src="js/rename.js?v=17"></script>
+  <script src="js/sheet.js?v=17"></script>
+  <script src="js/bigcsv.js?v=18"></script>
+  <script src="js/select.js?v=17"></script>
   <script>
     // Lucide 아이콘 초기화 (동적 추가 후엔 utils의 refreshIcons 사용)
     window.addEventListener("load", () => window.lucide && lucide.createIcons());

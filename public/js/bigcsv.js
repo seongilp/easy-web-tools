@@ -18,6 +18,9 @@
   const sizeEl = document.getElementById("bigPageSize");
   const exportBtn = document.getElementById("bigExport");
   const status = document.getElementById("bigStatus");
+  const panelBody = document.getElementById("bigPanelBody");
+  const fsToggle = document.getElementById("bigFsToggle");
+  const titleEl = document.getElementById("bigTitle");
 
   let duckdb = null;
   let db = null;
@@ -96,6 +99,8 @@
       page = 0;
       await refresh();
       panel.classList.remove("hidden");
+      if (titleEl) titleEl.textContent = `${file.name} — ${total.toLocaleString()}행 · ${cols.length}열`;
+      setFullscreen(true); // 파일이 열리면 엑셀처럼 전체화면으로
       setStatus(status, `불러옴 — ${total.toLocaleString()}행 · ${cols.length}열. 셀을 고치면 즉시 반영됩니다.`, "ok");
     } catch (err) {
       console.error(err);
@@ -129,31 +134,57 @@
     nextBtn.disabled = page >= pages - 1;
   }
 
+  // 엑셀식 열 문자: 0→A, 1→B, … 26→AA
+  function colLetter(n) {
+    let s = "";
+    n++;
+    while (n > 0) {
+      const m = (n - 1) % 26;
+      s = String.fromCharCode(65 + m) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
   function renderTable(rows) {
     const tbl = document.createElement("table");
-    tbl.className = "bigtable";
+    tbl.className = "xlgrid";
 
+    // 헤더 2줄: (1) 엑셀식 열 문자  (2) 실제 컬럼명
     const thead = document.createElement("thead");
-    const htr = document.createElement("tr");
-    const idTh = document.createElement("th");
-    idTh.textContent = "#";
-    idTh.className = "idcol";
-    htr.appendChild(idTh);
+    const letterTr = document.createElement("tr");
+    letterTr.className = "collet";
+    const corner = document.createElement("th");
+    corner.className = "corner";
+    letterTr.appendChild(corner);
+    cols.forEach((_, i) => {
+      const th = document.createElement("th");
+      th.textContent = colLetter(i);
+      letterTr.appendChild(th);
+    });
+    thead.appendChild(letterTr);
+
+    const nameTr = document.createElement("tr");
+    nameTr.className = "colname";
+    const cornerHash = document.createElement("th");
+    cornerHash.className = "corner";
+    nameTr.appendChild(cornerHash);
     cols.forEach((c) => {
       const th = document.createElement("th");
       th.textContent = c;
-      htr.appendChild(th);
+      nameTr.appendChild(th);
     });
-    thead.appendChild(htr);
+    thead.appendChild(nameTr);
     tbl.appendChild(thead);
 
+    const sz = pageSize();
     const tbody = document.createElement("tbody");
-    rows.forEach((row) => {
+    rows.forEach((row, ri) => {
       const tr = document.createElement("tr");
-      const idTd = document.createElement("td");
-      idTd.textContent = String(row.__id);
-      idTd.className = "idcol";
-      tr.appendChild(idTd);
+      const num = document.createElement("td");
+      num.className = "rownum";
+      num.textContent = (page * sz + ri + 1).toLocaleString(); // 엑셀식 행 번호(보이는 위치)
+      tr.appendChild(num);
       cols.forEach((c) => {
         const td = document.createElement("td");
         const inp = document.createElement("input");
@@ -172,6 +203,24 @@
     tableBox.innerHTML = "";
     tableBox.appendChild(tbl);
   }
+
+  // 전체화면(엑셀처럼) 토글
+  function setFullscreen(on) {
+    panelBody.classList.toggle("fs", on);
+    document.body.style.overflow = on ? "hidden" : "";
+    if (fsToggle) {
+      fsToggle.innerHTML = on
+        ? '<i data-lucide="minimize-2" class="h-4 w-4"></i> 닫기 (Esc)'
+        : '<i data-lucide="maximize-2" class="h-4 w-4"></i> 전체화면';
+      refreshIcons();
+    }
+  }
+  if (fsToggle) {
+    fsToggle.addEventListener("click", () => setFullscreen(!panelBody.classList.contains("fs")));
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && panelBody.classList.contains("fs")) setFullscreen(false);
+  });
 
   // 셀 편집 → 해당 행만 UPDATE (위임)
   tableBox.addEventListener("change", async (e) => {

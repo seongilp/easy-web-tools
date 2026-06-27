@@ -15,7 +15,7 @@
       },
     };
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=18" />
+  <link rel="stylesheet" href="css/styles.css?v=19" />
 </head>
 <body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
   <div class="mx-auto max-w-3xl px-4 pb-24">
@@ -493,6 +493,12 @@
       </label>
 
       <div id="bigPanelBody" class="hidden">
+        <div id="bigBar">
+          <i data-lucide="table-2" class="h-4 w-4"></i>
+          <span id="bigTitle" class="bigtitle"></span>
+          <span class="flex-1"></span>
+          <button id="bigFsToggle" class="btn-ghost"><i data-lucide="maximize-2" class="h-4 w-4"></i> 전체화면</button>
+        </div>
         <div class="mt-4 flex flex-wrap items-end gap-2">
           <div class="field" style="flex:1; min-width:220px">
             <label for="bigFilter">필터 (SQL WHERE 조건, 선택)</label>
@@ -566,7 +572,7 @@
   <script src="js/csv.js?v=17"></script>
   <script src="js/rename.js?v=17"></script>
   <script src="js/sheet.js?v=17"></script>
-  <script src="js/bigcsv.js?v=18"></script>
+  <script src="js/bigcsv.js?v=19"></script>
   <script src="js/hwpx.js?v=18"></script>
   <script src="js/select.js?v=17"></script>
   <script>

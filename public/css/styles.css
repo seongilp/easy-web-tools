@@ -28,6 +28,7 @@
   color: rgb(161 161 170);
   font-size: 0.9rem;
   cursor: pointer;
+  white-space: nowrap; /* 라벨이 단어 중간에서 줄바꿈되지 않도록 */
   transition: all 0.15s;
 }
 .tab:hover { color: rgb(244 244 245); border-color: rgb(99 102 241); }
@@ -224,3 +225,44 @@
 }
 .sortlist .remove:hover { color: rgb(248 113 113); }
 .sortlist .handle { color: rgb(113 113 122); display: inline-flex; }
+
+/* 파일명 수정 리스트 */
+.namelist { list-style: none; padding: 0; margin: 1rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.namelist li {
+  background: rgb(9 9 11);
+  border: 1px solid rgb(39 39 42);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+}
+.namelist .orig {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  margin-bottom: 0.45rem;
+  color: rgb(113 113 122);
+  font-size: 0.75rem;
+}
+.namelist .orig .fn { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.namelist .badge {
+  flex: none;
+  color: #fff;
+  background: rgb(99 102 241);
+  border-radius: 9999px;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.68rem;
+}
+.namelist .row { display: flex; align-items: center; gap: 0.5rem; }
+.namelist .row input {
+  flex: 1;
+  min-width: 0;
+  background: rgb(24 24 27);
+  border: 1px solid rgb(63 63 70);
+  color: rgb(244 244 245);
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.88rem;
+  outline: none;
+}
+.namelist .row input:focus { border-color: rgb(99 102 241); }
+.namelist .row .btn-ghost { flex: none; padding: 0.5rem 0.8rem; }

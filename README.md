@@ -11,12 +11,14 @@
 - **🎛️ 이미지 편집 (WASM)** — 밝기·대비·채도·색조·블러, 회전/반전, 자르기, 텍스트, 워터마크 (Photon WASM)
 - **🟣 도장 찍기** — 도장 이미지를 여러 사진 위 한 곳에 일괄 합성
 - **📄 PDF ↔ PNG** — PDF 페이지를 PNG로(ZIP), 여러 이미지를 하나의 PDF로 (pdf.js, jsPDF)
+- **📊 CSV → XLSX** — CSV를 엑셀(.xlsx)로 변환, UTF-8·EUC-KR 인코딩 선택, 값은 텍스트로 유지(0으로 시작하는 숫자·날짜 보존), NFC 정규화 (SheetJS)
+- **📝 파일명 수정** — 맥에서 깨진 한글 파일명(NFD 자모 분리)을 NFC로 자동 정상화, 직접 편집, 개별·일괄(ZIP) 저장
 
 ## 기술
 
 - 순수 정적 사이트 (빌드 단계 없음), TailwindCSS + Lucide
 - WASM: Photon(이미지 편집), libheif-js(HEIC 디코드)
-- CDN: pdf.js, jsPDF, JSZip, lamejs
+- CDN: pdf.js, jsPDF, JSZip, lamejs, SheetJS
 
 ## 로컬 실행
 

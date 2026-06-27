@@ -312,3 +312,24 @@
 }
 .bigtable td input:focus { background: rgb(30 30 46); box-shadow: inset 0 0 0 1px rgb(99 102 241); }
 .bigtable td input.edited { color: rgb(52 211 153); }
+
+/* HWPX 뷰어 (흰 종이 느낌) */
+#hwpxView { margin-top: 0.9rem; }
+#hwpxView:empty { display: none; }
+.hwpx-doc {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 0.6rem;
+  padding: 2.4rem 2.6rem;
+  max-height: 620px;
+  overflow: auto;
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.hwpx-doc p { margin: 0 0 0.55em; white-space: pre-wrap; word-break: break-word; }
+.hwpx-doc p:empty { min-height: 1em; }
+.hwpx-doc img { max-width: 100%; height: auto; margin: 0.4em 0; }
+.hwpx-doc table.hwpx-tbl { border-collapse: collapse; margin: 0.8em 0; max-width: 100%; }
+.hwpx-tbl td { border: 1px solid #b0b0b0; padding: 0.32em 0.6em; vertical-align: top; }
+.hwpx-tbl td p { margin: 0; }

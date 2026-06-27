@@ -15,6 +15,7 @@
 - **📝 파일명 수정** — 맥에서 깨진 한글 파일명(NFD 자모 분리)을 NFC로 자동 정상화, 직접 편집, 개별·일괄(ZIP) 저장
 - **📋 엑셀 편집** — xlsx·csv를 표에서 바로 셀 편집 후 xlsx/csv로 저장, 소~중간 규모 (SheetJS + x-spreadsheet)
 - **🗄️ 대용량 CSV 편집 (WASM)** — 수십만~수백만 행 CSV를 브라우저 내장 DB에 올려 페이지 단위 편집 + SQL WHERE 필터 + 다시 CSV로 내보내기 (DuckDB-WASM)
+- **📑 HWPX 뷰어** — 한컴오피스 .hwpx(ZIP + OWPML) 문서의 문단·표·이미지를 브라우저에서 바로 표시 (서식 단순화, .hwp 구형 형식 미지원, JSZip)
 
 ## 기술
 

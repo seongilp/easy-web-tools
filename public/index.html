@@ -15,7 +15,7 @@
       },
     };
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=17" />
+  <link rel="stylesheet" href="css/styles.css?v=18" />
 </head>
 <body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
   <div class="mx-auto max-w-3xl px-4 pb-24">
@@ -59,6 +59,9 @@
       </button>
       <button class="tab" data-tab="big" role="tab">
         <i data-lucide="database" class="h-4 w-4"></i> 대용량 CSV
+      </button>
+      <button class="tab" data-tab="hwpx" role="tab">
+        <i data-lucide="file-type" class="h-4 w-4"></i> HWPX 뷰어
       </button>
     </nav>
 
@@ -519,6 +522,24 @@
       <div class="status" id="bigStatus"></div>
     </section>
 
+    <!-- ===== HWPX 뷰어 ===== -->
+    <section id="hwpx" class="panel card">
+      <div class="mb-4 flex items-center gap-2">
+        <i data-lucide="file-type" class="h-5 w-5 text-brand"></i>
+        <h2 class="text-lg font-semibold">HWPX 뷰어</h2>
+      </div>
+      <p class="hint">한컴오피스 <b>.hwpx</b> 문서의 내용(문단·표·이미지)을 브라우저에서 바로 봅니다. 서식은 단순화되어 표시되며, 구형 <b>.hwp</b>(바이너리) 형식은 지원하지 않습니다.</p>
+
+      <label class="filedrop" id="hwpxDrop">
+        <input type="file" id="hwpxInput" accept=".hwpx" hidden />
+        <i data-lucide="file-type" class="h-7 w-7"></i>
+        <span>.hwpx 파일 선택 또는 드래그</span>
+      </label>
+
+      <div id="hwpxView"></div>
+      <div class="status" id="hwpxStatus"></div>
+    </section>
+
     <footer class="mt-10 text-center text-xs text-zinc-500">
       100% 클라이언트 사이드 · 데이터는 어디로도 전송되지 않습니다.
     </footer>
@@ -546,6 +567,7 @@
   <script src="js/rename.js?v=17"></script>
   <script src="js/sheet.js?v=17"></script>
   <script src="js/bigcsv.js?v=18"></script>
+  <script src="js/hwpx.js?v=18"></script>
   <script src="js/select.js?v=17"></script>
   <script>
     // Lucide 아이콘 초기화 (동적 추가 후엔 utils의 refreshIcons 사용)

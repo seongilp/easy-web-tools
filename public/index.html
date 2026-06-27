@@ -15,7 +15,7 @@
       },
     };
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=19" />
+  <link rel="stylesheet" href="css/styles.css?v=20" />
 </head>
 <body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
   <div class="mx-auto max-w-3xl px-4 pb-24">
@@ -493,37 +493,38 @@
       </label>
 
       <div id="bigPanelBody" class="hidden">
+        <!-- 타이틀 바 -->
         <div id="bigBar">
           <i data-lucide="table-2" class="h-4 w-4"></i>
           <span id="bigTitle" class="bigtitle"></span>
           <span class="flex-1"></span>
-          <button id="bigFsToggle" class="btn-ghost"><i data-lucide="maximize-2" class="h-4 w-4"></i> 전체화면</button>
-        </div>
-        <div class="mt-4 flex flex-wrap items-end gap-2">
-          <div class="field" style="flex:1; min-width:220px">
-            <label for="bigFilter">필터 (SQL WHERE 조건, 선택)</label>
-            <input type="text" id="bigFilter" placeholder="예: amount > 1000 AND city = '서울'" />
-          </div>
-          <button id="bigApply" class="btn-ghost"><i data-lucide="filter" class="h-4 w-4"></i> 적용</button>
-          <div class="field" style="max-width:130px">
-            <label for="bigPageSize">페이지당</label>
-            <select id="bigPageSize">
-              <option>100</option>
-              <option>500</option>
-              <option>1000</option>
-            </select>
-          </div>
+          <button id="bigFsToggle" class="xbtn"><i data-lucide="maximize-2" class="h-4 w-4"></i> 전체화면</button>
         </div>
 
-        <div id="bigTable"></div>
-
-        <div class="mt-3 flex flex-wrap items-center gap-2">
-          <button id="bigPrev" class="btn-ghost"><i data-lucide="chevron-left" class="h-4 w-4"></i> 이전</button>
-          <button id="bigNext" class="btn-ghost">다음 <i data-lucide="chevron-right" class="h-4 w-4"></i></button>
-          <span id="bigInfo" class="text-sm text-zinc-400"></span>
+        <!-- 명령 바 (엑셀풍) -->
+        <div id="bigToolbar">
+          <div class="xfilter">
+            <i data-lucide="filter" class="h-4 w-4"></i>
+            <input type="text" id="bigFilter" placeholder="필터 — SQL WHERE 조건 (예: amount > 1000 AND city = '서울')" />
+            <button id="bigApply" class="xbtn sm">적용</button>
+          </div>
+          <span class="xsep"></span>
+          <button id="bigPrev" class="xbtn ic" title="이전 페이지"><i data-lucide="chevron-left" class="h-4 w-4"></i></button>
+          <span id="bigInfo" class="xinfo"></span>
+          <button id="bigNext" class="xbtn ic" title="다음 페이지"><i data-lucide="chevron-right" class="h-4 w-4"></i></button>
+          <label class="xlbl" for="bigPageSize">표시</label>
+          <select id="bigPageSize" data-no-enhance>
+            <option>100</option>
+            <option>500</option>
+            <option>1000</option>
+          </select>
           <span class="flex-1"></span>
-          <button id="bigExport" class="btn-primary"><i data-lucide="download" class="h-4 w-4"></i> CSV로 저장</button>
+          <button id="bigExport" class="xbtn primary"><i data-lucide="download" class="h-4 w-4"></i> CSV로 저장</button>
+          <button id="bigExit" class="xbtn ic" title="닫기 (Esc)"><i data-lucide="x" class="h-4 w-4"></i></button>
         </div>
+
+        <div id="bigTable" tabindex="0"></div>
+        <div id="bigHelp" class="xhelp">화살표 이동 · <b>Enter</b> 편집 · 입력 후 <b>Enter</b>/<b>Tab</b> 이동 · <b>Esc</b> 취소 · <b>PgUp/PgDn</b> 페이지</div>
       </div>
       <div class="status" id="bigStatus"></div>
     </section>
@@ -572,9 +573,9 @@
   <script src="js/csv.js?v=17"></script>
   <script src="js/rename.js?v=17"></script>
   <script src="js/sheet.js?v=17"></script>
-  <script src="js/bigcsv.js?v=19"></script>
+  <script src="js/bigcsv.js?v=20"></script>
   <script src="js/hwpx.js?v=18"></script>
-  <script src="js/select.js?v=17"></script>
+  <script src="js/select.js?v=20"></script>
   <script>
     // Lucide 아이콘 초기화 (동적 추가 후엔 utils의 refreshIcons 사용)
     window.addEventListener("load", () => window.lucide && lucide.createIcons());

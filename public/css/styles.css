@@ -272,79 +272,87 @@
 #sheetGrid:empty { margin-top: 0; }
 #sheetGrid .x-spreadsheet { border: 1px solid rgb(39 39 42); border-radius: 0.6rem; overflow: hidden; }
 
-/* 대용량 CSV 상단 바 */
-#bigBar { display: flex; align-items: center; gap: 0.45rem; color: rgb(212 212 216); font-size: 0.9rem; }
+/* 대용량 CSV 타이틀 바 */
+#bigBar { display: flex; align-items: center; gap: 0.45rem; color: rgb(212 212 216); font-size: 0.92rem; font-weight: 500; }
 #bigBar .bigtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
-#bigBar .btn-ghost { padding: 0.45rem 0.8rem; }
 
-/* 대용량 CSV 테이블 (엑셀 느낌) */
+/* 인라인(전체화면 아님) 상태에선 그리드/툴바 숨기고 타이틀바만 */
+#bigPanelBody:not(.fs) #bigToolbar,
+#bigPanelBody:not(.fs) #bigTable,
+#bigPanelBody:not(.fs) #bigHelp { display: none; }
+
+/* 엑셀풍 명령 바 */
+#bigToolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: #fff; border: 1px solid #d4d4d4; border-radius: 8px; padding: 7px 9px;
+}
+#bigToolbar .xfilter {
+  display: flex; align-items: center; gap: 6px; flex: 1; min-width: 280px;
+  background: #f6f7f8; border: 1px solid #d4d4d4; border-radius: 6px; padding: 3px 4px 3px 9px; color: #6b7280;
+}
+#bigToolbar .xfilter input { flex: 1; border: none; background: transparent; outline: none; color: #1a1a1a; font-size: 0.85rem; }
+#bigToolbar .xlbl { font-size: 0.8rem; color: #6b7280; }
+#bigToolbar #bigPageSize { background: #fff; border: 1px solid #c6c6c6; border-radius: 6px; padding: 5px 7px; font-size: 0.84rem; color: #1a1a1a; }
+#bigToolbar .xinfo { font-size: 0.83rem; color: #4b5563; white-space: nowrap; min-width: 9rem; text-align: center; }
+.xsep { width: 1px; align-self: stretch; background: #e2e2e2; margin: 2px 2px; }
+
+.xbtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #fff; border: 1px solid #c6c6c6; border-radius: 6px;
+  padding: 6px 12px; font-size: 0.85rem; color: #1f2937; cursor: pointer; white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+.xbtn:hover:not(:disabled) { background: #f1f1f1; border-color: #9ca3af; }
+.xbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.xbtn.sm { padding: 4px 10px; }
+.xbtn.ic { padding: 6px 8px; }
+.xbtn.primary { background: #107c41; border-color: #107c41; color: #fff; }
+.xbtn.primary:hover:not(:disabled) { background: #0c6a37; border-color: #0c6a37; }
+/* 타이틀바(어두운 배경)의 전체화면 버튼은 다크 톤 */
+#bigPanelBody:not(.fs) #bigBar .xbtn { background: transparent; color: #e4e4e7; border-color: rgb(63 63 70); }
+#bigPanelBody:not(.fs) #bigBar .xbtn:hover { border-color: rgb(99 102 241); }
+
+/* 그리드 (엑셀 느낌) */
 #bigTable {
-  overflow: auto;
-  max-height: 460px;
-  margin-top: 0.9rem;
-  border: 1px solid #c6c6c6;
-  border-radius: 0.4rem;
-  background: #fff;
+  overflow: auto; max-height: 460px; margin-top: 0.9rem;
+  border: 1px solid #c6c6c6; border-radius: 0.4rem; background: #fff; outline: none;
 }
 #bigTable:empty { display: none; }
 .xlgrid { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 0.82rem; color: #1a1a1a; }
-.xlgrid th, .xlgrid td { border-right: 1px solid #d4d4d4; border-bottom: 1px solid #d4d4d4; padding: 0; white-space: nowrap; }
+.xlgrid th, .xlgrid td { border-right: 1px solid #d4d4d4; border-bottom: 1px solid #d4d4d4; white-space: nowrap; }
 .xlgrid thead th {
-  position: sticky;
-  z-index: 2;
-  background: #f3f3f3;
-  color: #444;
-  font-weight: 600;
-  text-align: center;
-  padding: 0.25rem 0.6rem;
-  border-bottom: 1px solid #c6c6c6;
+  position: sticky; z-index: 2; background: #f3f3f3; color: #444;
+  font-weight: 600; text-align: center; padding: 0.25rem 0.6rem; border-bottom: 1px solid #c6c6c6;
 }
-.xlgrid tr.collet th { top: 0; height: 22px; color: #888; font-weight: 500; }
+.xlgrid tr.collet th { top: 0; height: 22px; color: #9ca3af; font-weight: 500; }
 .xlgrid tr.colname th { top: 22px; color: #1a1a1a; text-align: left; }
 .xlgrid th.corner { left: 0; z-index: 3; background: #e8e8e8; }
 .xlgrid td.rownum {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: #f3f3f3;
-  color: #888;
-  text-align: right;
-  padding: 0 0.55rem;
-  font-variant-numeric: tabular-nums;
-  border-right: 1px solid #c6c6c6;
+  position: sticky; left: 0; z-index: 1; background: #f3f3f3; color: #9aa0a6;
+  text-align: right; padding: 0.3rem 0.55rem; font-variant-numeric: tabular-nums; border-right: 1px solid #c6c6c6;
 }
-.xlgrid td input {
-  width: 16ch;
-  border: none;
-  background: transparent;
-  color: #1a1a1a;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.82rem;
-  outline: none;
+.xlgrid td[data-c] {
+  padding: 0.3rem 0.5rem; cursor: cell; max-width: 360px;
+  overflow: hidden; text-overflow: ellipsis;
 }
-.xlgrid td input:focus { box-shadow: inset 0 0 0 2px #107c41; background: #fff; } /* 엑셀 초록 선택 */
-.xlgrid td input.edited { color: #107c41; font-weight: 600; }
+.xlgrid td.cellsel { box-shadow: inset 0 0 0 2px #107c41; } /* 엑셀식 선택 테두리 */
+.xlgrid td.edited { color: #107c41; font-weight: 600; }
+.xlgrid td.editing { padding: 0; overflow: visible; box-shadow: inset 0 0 0 2px #107c41; }
+.xlgrid td .celledit {
+  width: 100%; min-width: 8ch; border: none; outline: none; background: #fff; color: #1a1a1a;
+  padding: 0.3rem 0.5rem; font-size: 0.82rem; font-family: inherit;
+}
+
+/* 도움말 한 줄 */
+.xhelp { font-size: 0.76rem; color: #6b7280; padding: 2px 2px 0; }
+.xhelp b { color: #374151; font-weight: 600; }
 
 /* 파일 열리면 엑셀처럼 전체화면 */
 #bigPanelBody.fs {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  margin: 0;
-  padding: 0.85rem 1rem 1rem;
-  background: #eef0f3;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  position: fixed; inset: 0; z-index: 60; margin: 0; padding: 0.8rem 1rem 0.9rem;
+  background: #eef0f3; display: flex; flex-direction: column; gap: 0.55rem;
 }
-#bigPanelBody.fs #bigBar,
-#bigPanelBody.fs .bigtitle { color: #1f2937; }
-#bigPanelBody.fs #bigBar .btn-ghost,
-#bigPanelBody.fs .btn-ghost { color: #1f2937; border-color: #c6c6c6; }
-#bigPanelBody.fs .field label { color: #4b5563; }
-#bigPanelBody.fs .field input,
-#bigPanelBody.fs .seg-btn { background: #fff; color: #1a1a1a; border-color: #c6c6c6; }
-#bigPanelBody.fs #bigInfo { color: #4b5563 !important; }
+#bigPanelBody.fs #bigBar, #bigPanelBody.fs .bigtitle { color: #1f2937; }
 #bigPanelBody.fs #bigTable { flex: 1; max-height: none; margin-top: 0; }
 
 /* HWPX 뷰어 (흰 종이 느낌) */

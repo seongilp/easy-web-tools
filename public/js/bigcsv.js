@@ -30,6 +30,9 @@
   let page = 0;
   let where = "";
   let baseName = "data";
+  let currentRows = []; // 현재 페이지 데이터
+  let active = { r: 0, c: 0 }; // 선택된 셀(엑셀식)
+  let editing = false;
 
   function pageSize() {
     return parseInt(sizeEl.value, 10) || 100;
@@ -128,10 +131,12 @@
     if (page >= pages) page = pages - 1;
     if (page < 0) page = 0;
     const rows = await fetchPage();
+    currentRows = rows;
     renderTable(rows);
     info.textContent = `${total.toLocaleString()}행 · ${page + 1} / ${pages} 페이지`;
     prevBtn.disabled = page <= 0;
     nextBtn.disabled = page >= pages - 1;
+    selectCell(0, 0, false); // 페이지 바뀌면 첫 셀 선택
   }
 
   // 엑셀식 열 문자: 0→A, 1→B, … 26→AA
@@ -185,15 +190,11 @@
       num.className = "rownum";
       num.textContent = (page * sz + ri + 1).toLocaleString(); // 엑셀식 행 번호(보이는 위치)
       tr.appendChild(num);
-      cols.forEach((c) => {
+      cols.forEach((c, ci) => {
         const td = document.createElement("td");
-        const inp = document.createElement("input");
-        inp.type = "text";
-        inp.value = row[c] == null ? "" : String(row[c]);
-        inp.dataset.id = String(row.__id);
-        inp.dataset.col = c;
-        inp.spellcheck = false;
-        td.appendChild(inp);
+        td.dataset.r = ri;
+        td.dataset.c = ci;
+        td.textContent = row[c] == null ? "" : String(row[c]); // 기본은 텍스트(편집 모드 아님)
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
@@ -203,6 +204,144 @@
     tableBox.innerHTML = "";
     tableBox.appendChild(tbl);
   }
+
+  // ── 엑셀식 셀 선택/편집 ─────────────────────────────────────────
+  function cellEl(r, c) {
+    return tableBox.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+  }
+  function clamp(v, max) {
+    return Math.max(0, Math.min(v, max));
+  }
+  function applyActive() {
+    const prev = tableBox.querySelector("td.cellsel");
+    if (prev) prev.classList.remove("cellsel");
+    const td = cellEl(active.r, active.c);
+    if (td) {
+      td.classList.add("cellsel");
+      td.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }
+  function selectCell(r, c, focus = true) {
+    if (!currentRows.length) return;
+    active = { r: clamp(r, currentRows.length - 1), c: clamp(c, cols.length - 1) };
+    applyActive();
+    if (focus) tableBox.focus();
+  }
+
+  function beginEdit(initial) {
+    const td = cellEl(active.r, active.c);
+    if (!td) return;
+    editing = true;
+    td.classList.add("editing");
+    const cur = currentRows[active.r][cols[active.c]];
+    const inp = document.createElement("input");
+    inp.className = "celledit";
+    inp.value = initial != null ? initial : cur == null ? "" : String(cur);
+    inp.spellcheck = false;
+    td.textContent = "";
+    td.appendChild(inp);
+    inp.focus();
+    if (initial == null) inp.select();
+    else inp.setSelectionRange(inp.value.length, inp.value.length);
+
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commitEdit(e.shiftKey ? "up" : "down");
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        commitEdit(e.shiftKey ? "left" : "right");
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation(); // 전체화면 닫힘 방지
+        cancelEdit();
+      } else {
+        e.stopPropagation(); // 입력 중에는 그리드 네비게이션 차단
+      }
+    });
+    inp.addEventListener("blur", () => {
+      if (editing) commitEdit(null);
+    });
+  }
+
+  function endEditDom(text) {
+    const td = cellEl(active.r, active.c);
+    if (td) {
+      td.classList.remove("editing");
+      td.textContent = text;
+    }
+    editing = false;
+  }
+
+  async function commitEdit(move) {
+    const td = cellEl(active.r, active.c);
+    const inp = td && td.querySelector("input");
+    const col = cols[active.c];
+    const old = currentRows[active.r][col];
+    const val = inp ? inp.value : old == null ? "" : String(old);
+    const id = currentRows[active.r].__id;
+    endEditDom(val);
+    applyActive();
+    if (val !== (old == null ? "" : String(old))) {
+      currentRows[active.r][col] = val;
+      if (td) td.classList.add("edited");
+      try {
+        await updateCell(id, col, val);
+      } catch (err) {
+        console.error(err);
+        setStatus(status, "셀 수정 실패: " + (err.message || err), "err");
+      }
+    }
+    if (move === "down") selectCell(active.r + 1, active.c);
+    else if (move === "up") selectCell(active.r - 1, active.c);
+    else if (move === "right") selectCell(active.r, active.c + 1);
+    else if (move === "left") selectCell(active.r, active.c - 1);
+    else tableBox.focus();
+  }
+
+  function cancelEdit() {
+    const old = currentRows[active.r][cols[active.c]];
+    endEditDom(old == null ? "" : String(old));
+    applyActive();
+    tableBox.focus();
+  }
+
+  // __id는 우리가 부여한 정수라 리터럴로 인라인. 사용자 값만 파라미터 바인딩.
+  // (DuckDB-WASM은 BigInt 파라미터를 워커로 직렬화하지 못해 ? 바인딩 대신 인라인)
+  async function updateCell(id, col, value) {
+    const stmt = await conn.prepare(`UPDATE t SET ${q(col)} = ? WHERE __id = ${Number(id)}`);
+    await stmt.query(value);
+    await stmt.close();
+  }
+
+  // 그리드 키보드 네비게이션 (편집 중이 아닐 때)
+  tableBox.addEventListener("keydown", (e) => {
+    if (editing) return;
+    const k = e.key;
+    if (k === "ArrowUp") { e.preventDefault(); selectCell(active.r - 1, active.c); }
+    else if (k === "ArrowDown") { e.preventDefault(); selectCell(active.r + 1, active.c); }
+    else if (k === "ArrowLeft") { e.preventDefault(); selectCell(active.r, active.c - 1); }
+    else if (k === "ArrowRight" || k === "Tab") { e.preventDefault(); selectCell(active.r, active.c + (e.shiftKey ? -1 : 1)); }
+    else if (k === "Enter" || k === "F2") { e.preventDefault(); beginEdit(); }
+    else if (k === "PageDown") { e.preventDefault(); if (!nextBtn.disabled) nextBtn.click(); }
+    else if (k === "PageUp") { e.preventDefault(); if (!prevBtn.disabled) prevBtn.click(); }
+    else if (k === "Delete" || k === "Backspace") { e.preventDefault(); beginEdit(""); commitEdit(null); }
+    else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); beginEdit(k); }
+  });
+  // 클릭=선택, 더블클릭=편집
+  tableBox.addEventListener("mousedown", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    const td = e.target.closest("td[data-c]");
+    if (!td) return;
+    if (editing) commitEdit(null);
+    selectCell(+td.dataset.r, +td.dataset.c);
+  });
+  tableBox.addEventListener("dblclick", (e) => {
+    const td = e.target.closest("td[data-c]");
+    if (!td) return;
+    selectCell(+td.dataset.r, +td.dataset.c);
+    beginEdit();
+  });
 
   // 전체화면(엑셀처럼) 토글
   function setFullscreen(on) {
@@ -218,27 +357,10 @@
   if (fsToggle) {
     fsToggle.addEventListener("click", () => setFullscreen(!panelBody.classList.contains("fs")));
   }
+  const exitBtn = document.getElementById("bigExit");
+  if (exitBtn) exitBtn.addEventListener("click", () => setFullscreen(false));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && panelBody.classList.contains("fs")) setFullscreen(false);
-  });
-
-  // 셀 편집 → 해당 행만 UPDATE (위임)
-  tableBox.addEventListener("change", async (e) => {
-    const inp = e.target;
-    if (!inp.matches("input[data-col]")) return;
-    const id = inp.dataset.id;
-    const col = inp.dataset.col;
-    try {
-      // __id는 우리가 부여한 정수라 리터럴로 안전하게 인라인. 사용자 값만 파라미터 바인딩.
-      // (DuckDB-WASM은 BigInt 파라미터를 워커로 직렬화하지 못해 ? 바인딩 대신 인라인)
-      const stmt = await conn.prepare(`UPDATE t SET ${q(col)} = ? WHERE __id = ${Number(id)}`);
-      await stmt.query(inp.value);
-      await stmt.close();
-      inp.classList.add("edited");
-    } catch (err) {
-      console.error(err);
-      setStatus(status, "셀 수정 실패: " + (err.message || err), "err");
-    }
+    if (e.key === "Escape" && !editing && panelBody.classList.contains("fs")) setFullscreen(false);
   });
 
   applyBtn.addEventListener("click", async () => {

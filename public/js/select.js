@@ -41,7 +41,8 @@
   }
 
   function enhanceAll() {
-    document.querySelectorAll("select").forEach(enhance);
+    // data-no-enhance가 붙은 select는 네이티브 드롭다운으로 둔다(엑셀풍 툴바 등)
+    document.querySelectorAll("select:not([data-no-enhance])").forEach(enhance);
   }
 
   if (document.readyState === "loading") {

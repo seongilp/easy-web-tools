@@ -48,6 +48,9 @@
       <button class="tab" data-tab="pdf" role="tab">
         <i data-lucide="file-text" class="h-4 w-4"></i> PDF ↔ PNG
       </button>
+      <button class="tab" data-tab="heic" role="tab">
+        <i data-lucide="image-down" class="h-4 w-4"></i> HEIC → PNG
+      </button>
       <button class="tab" data-tab="csv" role="tab">
         <i data-lucide="table" class="h-4 w-4"></i> CSV → XLSX
       </button>
@@ -386,6 +389,29 @@
       </div>
     </section>
 
+    <!-- ===== HEIC -> PNG ===== -->
+    <section id="heic" class="panel card">
+      <div class="mb-4 flex items-center gap-2">
+        <i data-lucide="image-down" class="h-5 w-5 text-brand"></i>
+        <h2 class="text-lg font-semibold">HEIC → PNG 변환</h2>
+      </div>
+      <p class="hint">아이폰 사진(HEIC/HEIF)을 PNG로 변환합니다. 여러 장이면 개별 저장하거나 ZIP으로 한번에 받을 수 있어요. 최초 1회 디코더(WASM) 로딩에 잠깐 걸립니다.</p>
+
+      <label class="filedrop" id="heicDrop">
+        <input type="file" id="heicInput" accept=".heic,.heif,image/heic,image/heif" multiple hidden />
+        <i data-lucide="image-plus" class="h-7 w-7"></i>
+        <span>HEIC 파일 선택 또는 드래그 (여러 개 가능)</span>
+      </label>
+
+      <div class="thumbs" id="heicList"></div>
+      <div class="mt-4">
+        <button id="heicZip" class="btn-primary hidden">
+          <i data-lucide="package" class="h-4 w-4"></i> 전체 ZIP으로 한번에 저장
+        </button>
+      </div>
+      <div class="status" id="heicStatus"></div>
+    </section>
+
     <!-- ===== CSV -> XLSX ===== -->
     <section id="csv" class="panel card">
       <div class="mb-4 flex items-center gap-2">
@@ -567,6 +593,7 @@
   <script src="js/audio.js?v=17"></script>
   <script src="js/image.js?v=17"></script>
   <script src="js/pdf-tools.js?v=17"></script>
+  <script src="js/heic2png.js?v=1"></script>
   <script src="js/app.js?v=17"></script>
   <script type="module" src="js/editor.js?v=17"></script>
   <script src="js/stamp.js?v=17"></script>

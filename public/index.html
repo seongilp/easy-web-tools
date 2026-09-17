@@ -15,7 +15,7 @@
       },
     };
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=22" />
+  <link rel="stylesheet" href="css/styles.css?v=23" />
 </head>
 <body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
   <div class="mx-auto max-w-3xl px-4 pb-24">
@@ -486,11 +486,14 @@
         <span>xlsx 또는 csv 선택·드래그</span>
       </label>
 
-      <div id="sheetToolbar" class="mt-3 hidden flex-wrap gap-2">
-        <button id="sheetSaveXlsx" class="btn-primary"><i data-lucide="download" class="h-4 w-4"></i> xlsx로 저장</button>
-        <button id="sheetSaveCsv" class="btn-ghost"><i data-lucide="download" class="h-4 w-4"></i> csv로 저장</button>
+      <div id="sheetBody">
+        <div id="sheetToolbar" class="mt-3 hidden flex-wrap gap-2">
+          <button id="sheetSaveXlsx" class="btn-primary"><i data-lucide="download" class="h-4 w-4"></i> xlsx로 저장</button>
+          <button id="sheetSaveCsv" class="btn-ghost"><i data-lucide="download" class="h-4 w-4"></i> csv로 저장</button>
+          <button id="sheetFsToggle" class="btn-ghost"><i data-lucide="maximize-2" class="h-4 w-4"></i> 전체화면</button>
+        </div>
+        <div id="sheetGrid"></div>
       </div>
-      <div id="sheetGrid"></div>
       <div class="status" id="sheetStatus"></div>
     </section>
 
@@ -599,7 +602,7 @@
   <script src="js/stamp.js?v=17"></script>
   <script src="js/csv.js?v=17"></script>
   <script src="js/rename.js?v=17"></script>
-  <script src="js/sheet.js?v=17"></script>
+  <script src="js/sheet.js?v=18"></script>
   <script src="js/bigcsv.js?v=26"></script>
   <script src="js/hwpx.js?v=18"></script>
   <script src="js/select.js?v=20"></script>

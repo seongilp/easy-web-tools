@@ -13,6 +13,11 @@
   const saveXlsx = document.getElementById("sheetSaveXlsx");
   const saveCsv = document.getElementById("sheetSaveCsv");
   const status = document.getElementById("sheetStatus");
+  const body = document.getElementById("sheetBody");
+  const fsToggle = document.getElementById("sheetFsToggle");
+
+  const MIN_GRID_HEIGHT = 480;
+  const GRID_HEIGHT_RATIO = 0.75; // 일반 모드: 창 높이의 75%
 
   let grid = null;
   let baseName = "sheet";
@@ -115,7 +120,7 @@
         showToolbar: true,
         showGrid: true,
         view: {
-          height: () => 480,
+          height: gridHeight,
           width: () => gridBox.clientWidth || 800,
         },
       }).loadData(stox(wb));
@@ -127,6 +132,34 @@
       setStatus(status, "열기 실패: " + (err.message || err), "err");
     }
   }
+
+  const isFullscreen = () => body.classList.contains("fs");
+
+  function gridHeight() {
+    if (isFullscreen()) return gridBox.clientHeight || window.innerHeight;
+    return Math.max(MIN_GRID_HEIGHT, Math.round(window.innerHeight * GRID_HEIGHT_RATIO));
+  }
+
+  // 전체화면 토글 — x-spreadsheet는 window resize 때 view 크기를 다시 읽는다
+  function setFullscreen(on) {
+    body.classList.toggle("fs", on);
+    document.body.style.overflow = on ? "hidden" : "";
+    fsToggle.innerHTML = on
+      ? '<i data-lucide="minimize-2" class="h-4 w-4"></i> 닫기 (Esc)'
+      : '<i data-lucide="maximize-2" class="h-4 w-4"></i> 전체화면';
+    refreshIcons();
+    requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+  }
+
+  fsToggle.addEventListener("click", () => setFullscreen(!isFullscreen()));
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !isFullscreen()) return;
+    const el = document.activeElement;
+    // 셀 편집 중 Esc는 편집 취소용 (x-spreadsheet 선택기의 숨은 input은 제외)
+    const typing = el && /^(TEXTAREA|INPUT)$/.test(el.tagName) && !el.closest(".hide-input");
+    if (typing) return;
+    setFullscreen(false);
+  });
 
   function currentWorkbook() {
     const data = grid.getData(); // 배열(여러 시트) 또는 단일 객체

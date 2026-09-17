@@ -287,6 +287,7 @@
 #bigPanelBody:not(.fs) #bigToolbar,
 #bigPanelBody:not(.fs) #bigTable,
 #bigPanelBody:not(.fs) #bigHelp { display: none; }
+#bigPanelBody:not(.fs) { margin-top: 0.9rem; }
 
 /* 엑셀풍 명령 바 */
 #bigToolbar {
